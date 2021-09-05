@@ -1,0 +1,20 @@
+apiVersion: podexternalip.yglab.eu.org/v1alpha1
+kind: PodExternalIP
+metadata:
+  name: pod-external-ip-001
+spec:
+  ip: 65.52.164.56
+  podSelector:
+    matchLabels:
+      app: nginx-001
+
+---
+apiVersion: podexternalip.yglab.eu.org/v1alpha1
+kind: PodExternalIP
+metadata:
+  name: pod-external-ip-002
+spec:
+  ip: 168.63.152.169
+  podSelector:
+    matchLabels:
+      app: nginx-002

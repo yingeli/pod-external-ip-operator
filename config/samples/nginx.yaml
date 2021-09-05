@@ -1,0 +1,130 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-001
+  labels:
+    app: nginx-001
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-001
+  template:
+    metadata:
+      annotations:
+        podexternalip.yglab.eu.org/externalip: 65.52.164.56    
+      labels:
+        app: nginx-001
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+      - name: iptables
+        image: bgiddings/iptables
+        command: ['sh', '-c', "sleep 3600"]
+        securityContext:
+          privileged: true
+      - name: curl
+        image: curlimages/curl
+        command: ['sh', '-c', "sleep 3600"]
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-002
+  labels:
+    app: nginx-002
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-002
+  template:
+    metadata:
+      annotations:
+        podexternalip.yglab.eu.org/externalip: 168.63.152.169    
+      labels:
+        app: nginx-002
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+      - name: iptables
+        image: bgiddings/iptables
+        command: ['sh', '-c', "sleep 3600"]
+        securityContext:
+          privileged: true
+      - name: curl
+        image: curlimages/curl
+        command: ['sh', '-c', "sleep 3600"]
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-003
+  labels:
+    app: nginx-003
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-003
+  template:
+    metadata:
+      annotations:
+        podexternalip.yglab.eu.org/externalip: 23.99.107.170   
+      labels:
+        app: nginx-003
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+      - name: iptables
+        image: bgiddings/iptables
+        command: ['sh', '-c', "sleep 3600"]
+        securityContext:
+          privileged: true
+      - name: curl
+        image: curlimages/curl
+        command: ['sh', '-c', "sleep 3600"]
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-004
+  labels:
+    app: nginx-004
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-004
+  template:
+    metadata:
+      annotations:
+        podexternalip.yglab.eu.org/externalip: 23.99.110.58    
+      labels:
+        app: nginx-004
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+      - name: iptables
+        image: bgiddings/iptables
+        command: ['sh', '-c', "sleep 3600"]
+        securityContext:
+          privileged: true
+      - name: curl
+        image: curlimages/curl
+        command: ['sh', '-c', "sleep 3600"]

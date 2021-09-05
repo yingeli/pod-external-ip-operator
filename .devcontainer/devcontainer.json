@@ -1,0 +1,46 @@
+{
+	"name": "Go",
+	"build": {
+		"dockerfile": "Dockerfile",
+		"args": {
+			// Update the VARIANT arg to pick a version of Go: 1, 1.16, 1.15
+			"VARIANT": "1",
+			// Options
+			"INSTALL_NODE": "false",
+			"NODE_VERSION": "lts/*"
+		}
+	},
+	"runArgs": [ "--init", "--privileged", "--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined" ],
+	"mounts": ["source=dind-var-lib-docker,target=/var/lib/docker,type=volume"],
+	"overrideCommand": false,
+
+	// Set *default* container specific settings.json values on container create.
+	"settings": {
+		"go.toolsManagement.checkForUpdates": "local",
+		"go.useLanguageServer": true,
+		"go.gopath": "/go",
+		"go.goroot": "/usr/local/go"
+	},
+
+	// Add the IDs of extensions you want installed when the container is created.
+	"extensions": [
+		"golang.Go",
+		"ms-azuretools.vscode-docker"
+	],
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": [],
+
+	// Use 'postCreateCommand' to run commands after the container is created.
+	// "postCreateCommand": "go version",
+	// "postCreateCommand": "bash .devcontainer/setup.sh",
+	
+	// Use 'postStartCommand' to run commands after the container is started.
+	// "postStartCommand": "bash .devcontainer/login.sh",
+
+	//"workspaceMount": "source=${localWorkspaceFolder},target=/go/src/github.com/yingeli/egress-ip-operator,type=bind,consistency=cached",
+	//"workspaceFolder": "/go/src/github.com/yingeli/egress-ip-operator",
+
+	// Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
+	"remoteUser": "vscode"
+}

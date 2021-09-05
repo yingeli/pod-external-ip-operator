@@ -1,0 +1,20 @@
+# permissions for end users to view podexternalips.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: podexternalip-viewer-role
+rules:
+- apiGroups:
+  - podexternalip.yglab.eu.org
+  resources:
+  - podexternalips
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - podexternalip.yglab.eu.org
+  resources:
+  - podexternalips/status
+  verbs:
+  - get

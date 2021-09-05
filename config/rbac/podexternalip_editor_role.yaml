@@ -1,0 +1,24 @@
+# permissions for end users to edit podexternalips.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: podexternalip-editor-role
+rules:
+- apiGroups:
+  - podexternalip.yglab.eu.org
+  resources:
+  - podexternalips
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - podexternalip.yglab.eu.org
+  resources:
+  - podexternalips/status
+  verbs:
+  - get
