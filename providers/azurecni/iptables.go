@@ -87,47 +87,24 @@ func RemovePodIPRules(pod *corev1.Pod) error {
 		return err
 	}
 	for _, rule := range rules {
-		if strings.Contains(rule, "--comment") && strings.Contains(rule, getComment(pod)) {
-			src := parseSource(rule)
-			ruleSpec := []string{"-s", src, "-j", "ACCEPT", "-m", "comment", "--comment", getComment(pod)}
-			if err := ipt.Delete("nat", egressChainName, ruleSpec...); err != nil {
+		ruleSpec := strings.Split(rule, " \"")
+		if ruleComment(ruleSpec) == getComment(pod) {
+			if err := ipt.Delete("nat", egressChainName, ruleSpec[2:]...); err != nil {
 				return err
 			}
 		}
 	}
 
 	return nil
-
-	/*
-		if pod.Status.PodIP != "" {
-			ruleSpec := []string{"-s", pod.Status.PodIP, "-j", "ACCEPT", "-m", "comment", "--comment", getComment(pod)}
-			if err := ipt.DeleteIfExists("nat", egressChainName, ruleSpec...); err != nil {
-				return err
-			}
-		} else {
-			rules, err := ipt.List("nat", egressChainName)
-			if err != nil {
-				return err
-			}
-			for _, rule := range rules {
-				if strings.Contains(rule, "--comment") && strings.Contains(rule, getComment(pod)) {
-					if err := ipt.Delete("nat", egressChainName, rule); err != nil {
-						return err
-					}
-				}
-			}
-		}
-	*/
 }
 
 func getComment(pod *corev1.Pod) string {
 	return pod.Namespace + "/" + pod.Name
 }
 
-func parseSource(rule string) string {
-	ruleSpec := strings.Split(rule, " ")
-	for i, s := range ruleSpec {
-		if s == "-s" || s == "--source" || s == "--src" {
+func ruleComment(ruleSpec []string) string {
+	for i, t := range ruleSpec {
+		if t == "--comment" && i < len(ruleSpec)-1 {
 			return ruleSpec[i+1]
 		}
 	}
