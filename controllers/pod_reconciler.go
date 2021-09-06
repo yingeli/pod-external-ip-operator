@@ -20,19 +20,13 @@ import (
 	"context"
 	"time"
 
-	// "strings"
-
 	corev1 "k8s.io/api/core/v1"
-	// metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	// "k8s.io/apimachinery/pkg/labels"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/go-logr/logr"
-	// "github.com/coreos/go-iptables/iptables"
 
-	// eipv1alpha1 "github.com/yingeli/pod-external-ip-operator/api/v1alpha1"
 	"github.com/yingeli/pod-external-ip-operator/providers"
 )
 
@@ -41,7 +35,6 @@ const (
 	externalipReadyAnnotation = "podexternalip.yglab.eu.org/ready"
 	externalipFinalizer       = "podexternalip.yglab.eu.org/finalizer"
 	externalipDissociater     = "podexternalip.yglab.eu.org/dissociater"
-	//externalipReady       = "podexternalip.yglab.eu.org/ready"
 )
 
 type PodAssociater struct {

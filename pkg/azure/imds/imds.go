@@ -1,7 +1,6 @@
 package imds
 
 import (
-	//"fmt"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -10,10 +9,6 @@ import (
 type Metadata struct {
 	Compute Compute
 }
-
-//func (metadata *Metadata) Compute() *Compute {
-//	return &metadata.compute
-//}
 
 type Compute struct {
 	AzEnvironment     string
@@ -24,10 +19,6 @@ type Compute struct {
 	VmId              string
 	VmScaleSetName    string
 }
-
-//func (compute *Compute) AzEnvironment() string {
-//	return compute.AzEnvironment
-//}
 
 func GetMetadata() (Metadata, error) {
 	var PTransport = &http.Transport{Proxy: nil}
@@ -52,8 +43,6 @@ func GetMetadata() (Metadata, error) {
 	if err != nil {
 		return Metadata{}, err
 	}
-
-	//fmt.Println(string(resp_body))
 
 	metadata := Metadata{}
 	json.Unmarshal(resp_body, &metadata)

@@ -117,28 +117,3 @@ func DissociatePublicIP(ctx context.Context, publicIPAddr string) error {
 	}
 	return nil
 }
-
-/*
-// GetPrivateIP detach public IP from VM and remove the ip configutation
-func GetPrivateIP(ctx context.Context, pipAddress string) (privateIPAddress string, err error) {
-	pip, err := LookupPublicIP(ctx, pipAddress)
-	if err != nil {
-		return privateIPAddress, fmt.Errorf("LookupPublicIP error: %v", err)
-	}
-
-	if pip.IPConfiguration == nil {
-		return privateIPAddress, fmt.Errorf("no IPConfiguration for public ip: %s", pipAddress)
-	}
-
-	ipconfig, err := GetIPConfiguration(ctx, *pip.IPConfiguration.ID)
-	if err != nil {
-		return privateIPAddress, err
-	}
-
-	if ipconfig.PrivateIPAddress == nil {
-		return privateIPAddress, fmt.Errorf("no PrivateIPAddress for public ip: %s", pipAddress)
-	}
-
-	return *ipconfig.PrivateIPAddress, nil
-}
-*/

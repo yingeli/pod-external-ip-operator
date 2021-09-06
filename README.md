@@ -15,7 +15,7 @@ Deploy pod-external-ip-operator into your AKS cluster:
 ```
 git clone https://github.com/yingeli/pod-external-ip-operator.git
 cd pod-external-ip-operator
-make deploy IMG=yingeli/pod-external-ip-operator:0.1.44
+make deploy IMG=yingeli/pod-external-ip-operator:0.1.45
 ```
 
 A namespace "pod-external-ip" will be created during the deployment. Now we add the credential of the Azure service principle as secrets:

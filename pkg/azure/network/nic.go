@@ -231,13 +231,3 @@ func DissociateNicPrivateIPWithPublicIP(ctx context.Context, nic *network.Interf
 	_, err = future.Result(nicClient)
 	return err
 }
-
-func getVMSSNicClient() VMSSInterfacesClient {
-	//nicClient := network.NewInterfacesClient(config.SubscriptionID())
-	nicClient := NewVMSSInterfacesClientWithBaseURI(
-		config.Environment().ResourceManagerEndpoint, config.SubscriptionID())
-	auth, _ := iam.GetResourceManagementAuthorizer()
-	nicClient.Authorizer = auth
-	nicClient.AddToUserAgent(config.UserAgent())
-	return nicClient
-}
