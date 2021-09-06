@@ -9,6 +9,7 @@ import (
 	"github.com/yingeli/pod-external-ip-operator/pkg/azure/compute"
 	"github.com/yingeli/pod-external-ip-operator/pkg/azure/config"
 	"github.com/yingeli/pod-external-ip-operator/pkg/azure/imds"
+	"github.com/yingeli/pod-external-ip-operator/pkg/azure/network"
 )
 
 type Associater struct {
@@ -47,7 +48,7 @@ func (p *Associater) Associate(ctx context.Context, pod *corev1.Pod, publicIPAdd
 	return true, nil
 }
 
-func (p *Associater) Dissociate(ctx context.Context, pod *corev1.Pod) error {
+func (p *Associater) Dissociate(ctx context.Context, pod *corev1.Pod, publicIPAddr string) error {
 	return RemovePodIPRules(pod)
 }
 
@@ -67,10 +68,15 @@ func (p *Finalizer) Initialize(ctx context.Context, localNetworks []string) erro
 	return nil
 }
 
-func (p *Finalizer) Finalize(ctx context.Context, pod *corev1.Pod) error {
+func (p *Finalizer) Finalize(ctx context.Context, pod *corev1.Pod, publicIPAddr string) error {
 	podIP := pod.Status.PodIP
 	nodeName := pod.Spec.NodeName
-	return compute.DissociateVMPrivateIPWithPublicIP(ctx, nodeName, podIP)
+	if podIP != "" && nodeName != "" {
+		nodeName := pod.Spec.NodeName
+		return compute.DissociateVMPrivateIPWithPublicIP(ctx, nodeName, podIP)
+	} else {
+		return network.DissociatePublicIP(ctx, publicIPAddr)
+	}
 }
 
 func initializeAzure() (hostName string, err error) {

@@ -4,15 +4,15 @@ metadata:
   name: daemon-manager
   namespace: system
   labels:
-    control-plane: controller-manager
+    control-plane: daemon-manager
 spec:
   selector:
     matchLabels:
-      control-plane: controller-manager
+      control-plane: daemon-manager
   template:
     metadata:
       labels:
-        control-plane: controller-manager
+        control-plane: daemon-manager
     spec:
       hostNetwork: true
       containers:

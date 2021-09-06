@@ -13,6 +13,10 @@ resources:
   kind: PodExternalIP
   path: github.com/yingeli/pod-external-ip-operator/api/v1alpha1
   version: v1alpha1
+  webhooks:
+    defaulting: true
+    validation: true
+    webhookVersion: v1
 - controller: true
   group: core
   kind: Pod

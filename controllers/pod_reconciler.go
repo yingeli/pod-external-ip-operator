@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"time"
+
 	// "strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -36,15 +37,16 @@ import (
 )
 
 const (
-	externalipAnnotation  = "podexternalip.yglab.eu.org/externalip"
-	readyAnnotation       = "podexternalip.yglab.eu.org/ready"
-	externalipFinalizer   = "podexternalip.yglab.eu.org/finalizer"
-	externalipDissociater = "podexternalip.yglab.eu.org/dissociater"
+	externalipAnnotation      = "podexternalip.yglab.eu.org/externalip"
+	externalipReadyAnnotation = "podexternalip.yglab.eu.org/ready"
+	externalipFinalizer       = "podexternalip.yglab.eu.org/finalizer"
+	externalipDissociater     = "podexternalip.yglab.eu.org/dissociater"
 	//externalipReady       = "podexternalip.yglab.eu.org/ready"
 )
 
 type PodAssociater struct {
 	client   *client.Client
+	assoMap  map[string]string
 	provider providers.Associater
 	log      logr.Logger
 }
@@ -52,9 +54,14 @@ type PodAssociater struct {
 func newPodAssociater(client *client.Client, provider providers.Associater) PodAssociater {
 	return PodAssociater{
 		client:   client,
+		assoMap:  make(map[string]string),
 		provider: provider,
 		log:      ctrl.Log.WithName("pod-associater"),
 	}
+}
+
+func (r *PodAssociater) setup(localNetworks []string) error {
+	return r.provider.Initialize(context.Background(), localNetworks)
 }
 
 func (r *PodAssociater) reconcile(ctx context.Context, pod *corev1.Pod) (ctrl.Result, error) {
@@ -73,12 +80,12 @@ func (r *PodAssociater) reconcile(ctx context.Context, pod *corev1.Pod) (ctrl.Re
 }
 
 func (r *PodAssociater) associate(ctx context.Context, pod *corev1.Pod) error {
-	if isExternalIPReady(pod) {
+	externalIP := getExternalIP(pod)
+	if externalIP == "" {
 		return nil
 	}
 
-	externalIP := getExternalIP(pod)
-	if externalIP == "" {
+	if _, ok := r.assoMap[pod.Namespace+"/"+pod.Name]; ok && isExternalIPReady(pod) {
 		return nil
 	}
 
@@ -96,6 +103,7 @@ func (r *PodAssociater) associate(ctx context.Context, pod *corev1.Pod) error {
 		if err := (*r.client).Update(ctx, pod); err != nil {
 			return err
 		}
+		r.assoMap[pod.Namespace+"/"+pod.Name] = externalIP
 		r.log.Info("associate pod with external IP", "pod.Name", pod.Name, "pod.Status.PodIP", pod.Status.PodIP, "externalIP", externalIP)
 	}
 
@@ -107,7 +115,7 @@ func (r *PodAssociater) dissociate(ctx context.Context, pod *corev1.Pod) error {
 		return nil
 	}
 
-	if err := r.provider.Dissociate(ctx, pod); err != nil {
+	if err := r.provider.Dissociate(ctx, pod, pod.Annotations[externalipAnnotation]); err != nil {
 		return err
 	}
 
@@ -148,7 +156,7 @@ func (r *PodFinalizer) finalize(ctx context.Context, pod *corev1.Pod) error {
 		return nil
 	}
 
-	if err := r.provider.Finalize(ctx, pod); err != nil {
+	if err := r.provider.Finalize(ctx, pod, pod.Annotations[externalipAnnotation]); err != nil {
 		return err
 	}
 
@@ -167,11 +175,11 @@ func (r *PodFinalizer) removeFinalizer(ctx context.Context, pod *corev1.Pod) err
 }
 
 func isExternalIPReady(pod *corev1.Pod) bool {
-	return pod.Annotations[readyAnnotation] == "true"
+	return pod.Annotations[externalipReadyAnnotation] == "true"
 }
 
 func setExternalIPReady(pod *corev1.Pod) {
-	pod.Annotations[readyAnnotation] = "true"
+	pod.Annotations[externalipReadyAnnotation] = "true"
 }
 
 func getExternalIP(pod *corev1.Pod) string {

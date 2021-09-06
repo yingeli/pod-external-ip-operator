@@ -91,7 +91,14 @@ func LookupPublicIP(ctx context.Context, address string) (ip network.PublicIPAdd
 	return ip, false, nil
 }
 
-func DissociatePublicIP(ctx context.Context, pip *network.PublicIPAddress) error {
+func DissociatePublicIP(ctx context.Context, publicIPAddr string) error {
+	pip, found, err := LookupPublicIP(ctx, publicIPAddr)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return nil
+	}
 	if pip.IPConfiguration != nil {
 		r, err := ParseIPConfigurationID(*pip.IPConfiguration.ID)
 		if err != nil {

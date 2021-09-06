@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	podexternalipv1alpha1 "github.com/yingeli/pod-external-ip-operator/api/v1alpha1"
 	"github.com/yingeli/pod-external-ip-operator/controllers"
@@ -85,6 +86,18 @@ func main() {
 			setupLog.Error(err, "unable to create controller", "controller", "Pod")
 			os.Exit(1)
 		}
+
+		if err = (&podexternalipv1alpha1.PodExternalIP{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "PodExternalIP")
+			os.Exit(1)
+		}
+
+		// Setup pod webhook
+		setupLog.Info("setting up webhook server")
+		hookServer := mgr.GetWebhookServer()
+
+		setupLog.Info("registering webhooks to the webhook server")
+		hookServer.Register("/mutate-v1-pod", &webhook.Admission{Handler: &controllers.PodWebhook{Client: mgr.GetClient()}})
 	}
 	//+kubebuilder:scaffold:builder
 

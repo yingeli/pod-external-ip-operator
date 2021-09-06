@@ -2,6 +2,7 @@ package azurecni
 
 import (
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -68,7 +69,7 @@ func AddPodIPRules(pod *corev1.Pod) error {
 		return err
 	}
 
-	ruleSpec := []string{"-s", pod.Status.PodIP, "-j", "ACCEPT", "-m", "comment", "--comment", pod.Namespace + "/" + pod.Name}
+	ruleSpec := []string{"-s", pod.Status.PodIP, "-j", "ACCEPT", "-m", "comment", "--comment", getComment(pod)}
 	if err := insertUnique(ipt, "nat", egressChainName, ruleSpec); err != nil {
 		return err
 	}
@@ -81,11 +82,56 @@ func RemovePodIPRules(pod *corev1.Pod) error {
 		return err
 	}
 
-	ruleSpec := []string{"-s", pod.Status.PodIP, "-j", "ACCEPT", "-m", "comment", "--comment", pod.Namespace + "/" + pod.Name}
-	if err := ipt.DeleteIfExists("nat", egressChainName, ruleSpec...); err != nil {
+	rules, err := ipt.List("nat", egressChainName)
+	if err != nil {
 		return err
 	}
+	for _, rule := range rules {
+		if strings.Contains(rule, "--comment") && strings.Contains(rule, getComment(pod)) {
+			src := parseSource(rule)
+			ruleSpec := []string{"-s", src, "-j", "ACCEPT", "-m", "comment", "--comment", getComment(pod)}
+			if err := ipt.Delete("nat", egressChainName, ruleSpec...); err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
+
+	/*
+		if pod.Status.PodIP != "" {
+			ruleSpec := []string{"-s", pod.Status.PodIP, "-j", "ACCEPT", "-m", "comment", "--comment", getComment(pod)}
+			if err := ipt.DeleteIfExists("nat", egressChainName, ruleSpec...); err != nil {
+				return err
+			}
+		} else {
+			rules, err := ipt.List("nat", egressChainName)
+			if err != nil {
+				return err
+			}
+			for _, rule := range rules {
+				if strings.Contains(rule, "--comment") && strings.Contains(rule, getComment(pod)) {
+					if err := ipt.Delete("nat", egressChainName, rule); err != nil {
+						return err
+					}
+				}
+			}
+		}
+	*/
+}
+
+func getComment(pod *corev1.Pod) string {
+	return pod.Namespace + "/" + pod.Name
+}
+
+func parseSource(rule string) string {
+	ruleSpec := strings.Split(rule, " ")
+	for i, s := range ruleSpec {
+		if s == "-s" || s == "--source" || s == "--src" {
+			return ruleSpec[i+1]
+		}
+	}
+	return ""
 }
 
 func insertUnique(ipt *iptables.IPTables, table string, chain string, ruleSpec []string) error {
