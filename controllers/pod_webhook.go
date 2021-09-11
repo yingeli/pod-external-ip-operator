@@ -45,7 +45,7 @@ func (a *PodWebhook) Handle(ctx context.Context, req admission.Request) admissio
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
-	if getExternalIP(pod) != "" {
+	if parseExternalIP(pod) != "" {
 		found := false
 		for _, ic := range pod.Spec.InitContainers {
 			if ic.Name == "init-external-ip" {
@@ -67,7 +67,9 @@ func (a *PodWebhook) Handle(ctx context.Context, req admission.Request) admissio
 }
 
 func inject(pod *corev1.Pod) {
-	arg := "while ! grep -q \"podexternalip.yglab.eu.org/ready\" /etc/podinfo/annotations; do cat /etc/podinfo/annotations; sleep 5; done;"
+	//arg := "while ! grep -q 'podexternalip.yglab.eu.org/associatedpodip=\"'$POD_IP'\"' /etc/podinfo/annotations; do echo \"POD_IP=\"$POD_IP; cat /etc/podinfo/annotations; sleep 5; done;"
+	//arg := "while true; do cat /etc/podinfo/annotations; echo \"POD_IP=\"$POD_IP; sleep 5; done;"
+	arg := "while ! grep -q 'podexternalip.yglab.eu.org/associatedpodip=\"'$POD_IP'\"' /etc/podinfo/annotations; do sleep 5; done;"
 	init := corev1.Container{
 		Name:  "init-external-ip",
 		Image: "k8s.gcr.io/busybox",
@@ -76,6 +78,16 @@ func inject(pod *corev1.Pod) {
 			"-c",
 		},
 		Args: []string{arg},
+		Env: []corev1.EnvVar{
+			{
+				Name: "POD_IP",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "status.podIP",
+					},
+				},
+			},
+		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "podinfo",

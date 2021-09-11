@@ -11,6 +11,7 @@ import (
 	"log"
 
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2019-11-01/network"
+	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/yingeli/pod-external-ip-operator/pkg/azure/internal/config"
 	"github.com/yingeli/pod-external-ip-operator/pkg/azure/internal/iam"
@@ -205,12 +206,26 @@ func DissociateNicPublicIP(ctx context.Context, nic *network.Interface, ipconfig
 	return err
 }
 
-func DissociateNicPrivateIPWithPublicIP(ctx context.Context, nic *network.Interface, privateIPAddr string) error {
+func DissociateNicPrivateIPWithPublicIP(ctx context.Context, nic *network.Interface, privateIPAddr string, publicIPAddr string) error {
 	ipconfigs := nic.IPConfigurations
 	l := len(*ipconfigs)
 	for i := 0; i < l; i++ {
 		ifconfig := (*ipconfigs)[i]
 		if ifconfig.PrivateIPAddress != nil && *ifconfig.PrivateIPAddress == privateIPAddr {
+			if ifconfig.PublicIPAddress == nil {
+				return nil
+			}
+			r, err := azure.ParseResourceID(*ifconfig.PublicIPAddress.ID)
+			if err != nil {
+				return err
+			}
+			pip, err := GetPublicIP(ctx, r.ResourceName)
+			if err != nil {
+				return err
+			}
+			if *pip.IPAddress != publicIPAddr {
+				return nil
+			}
 			ifconfig.PublicIPAddress = nil
 			break
 		}

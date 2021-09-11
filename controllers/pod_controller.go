@@ -18,8 +18,6 @@ package controllers
 
 import (
 	"context"
-	"os"
-	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -61,7 +59,7 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	if err := r.Get(ctx, req.NamespacedName, &pod); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	err := r.finalizer.finalize(ctx, &pod)
+	err := r.finalizer.reconcile(ctx, &pod)
 
 	return ctrl.Result{}, err
 }
@@ -69,9 +67,8 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 // SetupWithManager sets up the controller with the Manager.
 func (r *PodReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// yingeli
-	localNetworks := strings.Split(os.Getenv("LOCAL_NETWORKS"), ",; ")
 	provider := azurecni.NewFinalizer()
-	if err := provider.Initialize(context.Background(), localNetworks); err != nil {
+	if err := provider.Initialize(context.Background()); err != nil {
 		return err
 	}
 	r.finalizer = newPodFinalizer(&r.Client, &provider)

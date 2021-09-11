@@ -63,16 +63,30 @@ func SetupIptables(localNetworks []string) error {
 	return nil
 }
 
-func AddPodIPRules(pod *corev1.Pod) error {
+func AddOrUpdatePodIPRules(pod *corev1.Pod, localIP string) error {
 	ipt, err := iptables.New()
 	if err != nil {
 		return err
 	}
 
-	ruleSpec := []string{"-s", pod.Status.PodIP, "-j", "ACCEPT", "-m", "comment", "--comment", getComment(pod)}
+	ruleSpec := []string{"-s", localIP, "-j", "ACCEPT", "-m", "comment", "--comment", namespacedName(pod)}
 	if err := insertUnique(ipt, "nat", egressChainName, ruleSpec); err != nil {
 		return err
 	}
+
+	rules, err := ipt.List("nat", egressChainName)
+	if err != nil {
+		return err
+	}
+	for _, rule := range rules {
+		ruleSpec := strings.Split(rule, " \"")
+		if parseComment(ruleSpec) == namespacedName(pod) && parseSource(ruleSpec) != localIP {
+			if err := ipt.Delete("nat", egressChainName, ruleSpec[2:]...); err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -88,7 +102,7 @@ func RemovePodIPRules(pod *corev1.Pod) error {
 	}
 	for _, rule := range rules {
 		ruleSpec := strings.Split(rule, " \"")
-		if ruleComment(ruleSpec) == getComment(pod) {
+		if parseComment(ruleSpec) == namespacedName(pod) {
 			if err := ipt.Delete("nat", egressChainName, ruleSpec[2:]...); err != nil {
 				return err
 			}
@@ -98,13 +112,19 @@ func RemovePodIPRules(pod *corev1.Pod) error {
 	return nil
 }
 
-func getComment(pod *corev1.Pod) string {
-	return pod.Namespace + "/" + pod.Name
+func parseComment(ruleSpec []string) string {
+	for i := 0; i < len(ruleSpec)-1; i++ {
+		if ruleSpec[i] == "--comment" {
+			return ruleSpec[i+1]
+		}
+	}
+	return ""
 }
 
-func ruleComment(ruleSpec []string) string {
-	for i, t := range ruleSpec {
-		if t == "--comment" && i < len(ruleSpec)-1 {
+func parseSource(ruleSpec []string) string {
+	for i := 0; i < len(ruleSpec)-1; i++ {
+		t := ruleSpec[i]
+		if t == "-s" || t == "--source" || t == "src" {
 			return ruleSpec[i+1]
 		}
 	}
@@ -122,4 +142,8 @@ func insertUnique(ipt *iptables.IPTables, table string, chain string, ruleSpec [
 		}
 	}
 	return nil
+}
+
+func namespacedName(pod *corev1.Pod) string {
+	return pod.Namespace + "/" + pod.Name
 }

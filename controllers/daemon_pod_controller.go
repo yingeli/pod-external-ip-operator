@@ -69,8 +69,9 @@ func (r *DaemonPodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 // SetupWithManager sets up the controller with the Manager.
 func (r *DaemonPodReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// yingeli
-	provider := azurecni.NewAssociater()
-	r.associater = newPodAssociater(&r.Client, &provider)
+	associater := azurecni.NewAssociater()
+	finalizer := azurecni.NewFinalizer()
+	r.associater = newPodAssociater(&r.Client, &associater, &finalizer)
 	localNetworks := strings.Split(os.Getenv("LOCAL_NETWORKS"), ",; ")
 	if err := r.associater.setup(localNetworks); err != nil {
 		return err

@@ -243,7 +243,7 @@ func AssociateVMPrivateIPWithPublicIP(ctx context.Context, vmName string, privat
 	return fmt.Errorf("cannot find primary nic on VM %s", vmName)
 }
 
-func DissociateVMPrivateIPWithPublicIP(ctx context.Context, vmName string, privateIPAddr string) error {
+func DissociateVMPrivateIPWithPublicIP(ctx context.Context, vmName string, privateIPAddr string, publicIPAddr string) error {
 	vm, err := GetVM(ctx, vmName)
 	if err != nil {
 		return fmt.Errorf("GetVM error: %v", err)
@@ -261,7 +261,7 @@ func DissociateVMPrivateIPWithPublicIP(ctx context.Context, vmName string, priva
 		}
 
 		if nic.Primary == nil || *nic.Primary {
-			return network.DissociateNicPrivateIPWithPublicIP(ctx, &nic, privateIPAddr)
+			return network.DissociateNicPrivateIPWithPublicIP(ctx, &nic, privateIPAddr, publicIPAddr)
 		}
 	}
 	return fmt.Errorf("cannot find primary nic on VM %s", vmName)

@@ -9,23 +9,23 @@ import (
 	"github.com/yingeli/pod-external-ip-operator/pkg/azure/compute"
 	"github.com/yingeli/pod-external-ip-operator/pkg/azure/config"
 	"github.com/yingeli/pod-external-ip-operator/pkg/azure/imds"
-	"github.com/yingeli/pod-external-ip-operator/pkg/azure/network"
 )
 
+const ()
+
 type Associater struct {
-	hostName string
+	//hostName string
 }
 
 func NewAssociater() Associater {
 	return Associater{}
 }
 
-func (p *Associater) Initialize(ctx context.Context, localNetworks []string) error {
-	hostName, err := initializeAzure()
-	if err != nil {
+func (a *Associater) Initialize(ctx context.Context, localNetworks []string) error {
+	if err := initializeAzure(); err != nil {
 		return err
 	}
-	p.hostName = hostName
+	//a.hostName = hostName
 
 	if err := SetupIptables(localNetworks); err != nil {
 		return err
@@ -34,22 +34,21 @@ func (p *Associater) Initialize(ctx context.Context, localNetworks []string) err
 	return nil
 }
 
-func (p *Associater) Associate(ctx context.Context, pod *corev1.Pod, publicIPAddr string) (bool, error) {
-	podIP := pod.Status.PodIP
-	if podIP == "" {
-		return false, nil
+func (a *Associater) Associate(ctx context.Context, pod *corev1.Pod, localIP string, publicIP string) error {
+	if err := compute.AssociateVMPrivateIPWithPublicIP(ctx, pod.Spec.NodeName, localIP, publicIP); err != nil {
+		return err
 	}
-	if err := compute.AssociateVMPrivateIPWithPublicIP(ctx, p.hostName, podIP, publicIPAddr); err != nil {
-		return false, err
+	if err := AddOrUpdatePodIPRules(pod, localIP); err != nil {
+		return err
 	}
-	if err := AddPodIPRules(pod); err != nil {
-		return false, err
-	}
-	return true, nil
+	return nil
 }
 
-func (p *Associater) Dissociate(ctx context.Context, pod *corev1.Pod, publicIPAddr string) error {
-	return RemovePodIPRules(pod)
+func (p *Associater) Dissociate(ctx context.Context, pod *corev1.Pod, localIP string, publicIP string) error {
+	if err := RemovePodIPRules(pod); err != nil {
+		return err
+	}
+	return nil
 }
 
 type Finalizer struct {
@@ -59,38 +58,30 @@ func NewFinalizer() Finalizer {
 	return Finalizer{}
 }
 
-func (p *Finalizer) Initialize(ctx context.Context, localNetworks []string) error {
-	_, err := initializeAzure()
-	if err != nil {
+func (p *Finalizer) Initialize(ctx context.Context) error {
+	if err := initializeAzure(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (p *Finalizer) Finalize(ctx context.Context, pod *corev1.Pod, publicIPAddr string) error {
-	podIP := pod.Status.PodIP
-	nodeName := pod.Spec.NodeName
-	if podIP != "" && nodeName != "" {
-		nodeName := pod.Spec.NodeName
-		return compute.DissociateVMPrivateIPWithPublicIP(ctx, nodeName, podIP)
-	} else {
-		return network.DissociatePublicIP(ctx, publicIPAddr)
-	}
+func (p *Finalizer) Finalize(ctx context.Context, pod *corev1.Pod, localIP string, publicIP string) error {
+	return compute.DissociateVMPrivateIPWithPublicIP(ctx, pod.Spec.NodeName, localIP, publicIP)
 }
 
-func initializeAzure() (hostName string, err error) {
+func initializeAzure() (err error) {
 	if err := config.ParseEnvironment(); err != nil {
-		return hostName, fmt.Errorf("config.ParseEnvironment error: %v", err)
+		return fmt.Errorf("config.ParseEnvironment error: %v", err)
 	}
 
 	metadata, err := imds.GetMetadata()
 	if err != nil {
-		return hostName, fmt.Errorf("imds.GetMetadata error: %v", err)
+		return fmt.Errorf("imds.GetMetadata error: %v", err)
 	}
 	compute := metadata.Compute
 
 	config.SetGroup(compute.AzEnvironment, compute.SubscriptionId, compute.ResourceGroupName)
 
-	return compute.Name, nil
+	return nil
 }
