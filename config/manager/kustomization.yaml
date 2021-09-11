@@ -14,4 +14,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: yingeli/pod-external-ip-operator
-  newTag: 0.1.44
+  newTag: 0.1.45
