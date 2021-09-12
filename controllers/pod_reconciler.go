@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -63,14 +62,17 @@ func (r *PodAssociater) reconcile(ctx context.Context, pod *corev1.Pod) (ctrl.Re
 
 	podIP := pod.Status.PodIP
 	if pod.ObjectMeta.DeletionTimestamp.IsZero() && podIP != "" {
-		if err := r.associateOrUpdate(ctx, pod, externalIP); err != nil {
-			result := ctrl.Result{
-				Requeue:      true,
-				RequeueAfter: time.Second * 10,
+		/*
+			if err := r.associateOrUpdate(ctx, pod, externalIP); err != nil {
+				result := ctrl.Result{
+					Requeue:      true,
+					RequeueAfter: time.Second * 10,
+				}
+				return result, err
 			}
-			return result, err
-		}
-		return ctrl.Result{}, nil
+			return ctrl.Result{}, nil
+		*/
+		return ctrl.Result{}, r.associateOrUpdate(ctx, pod, externalIP)
 	} else {
 		return ctrl.Result{}, r.dissociate(ctx, pod, externalIP)
 	}
