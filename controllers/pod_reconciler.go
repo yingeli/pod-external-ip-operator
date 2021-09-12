@@ -66,7 +66,7 @@ func (r *PodAssociater) reconcile(ctx context.Context, pod *corev1.Pod) (ctrl.Re
 		if err := r.associateOrUpdate(ctx, pod, externalIP); err != nil {
 			result := ctrl.Result{
 				Requeue:      true,
-				RequeueAfter: time.Second * 5,
+				RequeueAfter: time.Second * 10,
 			}
 			return result, err
 		}
