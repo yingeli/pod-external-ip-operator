@@ -69,7 +69,7 @@ func (a *PodWebhook) Handle(ctx context.Context, req admission.Request) admissio
 func inject(pod *corev1.Pod) {
 	//arg := "while ! grep -q 'podexternalip.yglab.eu.org/associatedpodip=\"'$POD_IP'\"' /etc/podinfo/annotations; do echo \"POD_IP=\"$POD_IP; cat /etc/podinfo/annotations; sleep 5; done;"
 	//arg := "while true; do cat /etc/podinfo/annotations; echo \"POD_IP=\"$POD_IP; sleep 5; done;"
-	arg := "while ! grep -q 'podexternalip.yglab.eu.org/associatedpodip=\"'$POD_IP'\"' /etc/podinfo/annotations; do sleep 5; done;"
+	arg := "while ! grep -q 'podexternalip.yglab.eu.org/associatedpodip=\"'$POD_IP'\"' /etc/podinfo/annotations; do sleep 1; done;"
 	init := corev1.Container{
 		Name:  "init-external-ip",
 		Image: "k8s.gcr.io/busybox",

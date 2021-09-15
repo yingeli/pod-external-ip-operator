@@ -3,15 +3,20 @@ package azurecni
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+
+	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/yingeli/pod-external-ip-operator/pkg/azure/compute"
 	"github.com/yingeli/pod-external-ip-operator/pkg/azure/config"
 	"github.com/yingeli/pod-external-ip-operator/pkg/azure/imds"
 )
 
-const ()
+var (
+	log = ctrl.Log.WithName("azurecni")
+)
 
 type Associater struct {
 	//hostName string
@@ -34,14 +39,19 @@ func (a *Associater) Initialize(ctx context.Context, localNetworks []string) err
 	return nil
 }
 
-func (a *Associater) Associate(ctx context.Context, pod *corev1.Pod, localIP string, publicIP string) error {
+func (a *Associater) Associate(ctx context.Context, pod *corev1.Pod, localIP string, publicIP string) (bool, error) {
 	if err := compute.AssociateVMPrivateIPWithPublicIP(ctx, pod.Spec.NodeName, localIP, publicIP); err != nil {
-		return err
+		log.Error(err, "error asscociating vm private ip with public ip", "err.Error()", err.Error())
+		if isPublicIPReferencedByMultipleIPConfigsError(err) || isPublicIPAddressInUseError(err) {
+			return true, nil
+		} else {
+			return false, err
+		}
 	}
 	if err := AddOrUpdatePodIPRules(pod, localIP); err != nil {
-		return err
+		return false, err
 	}
-	return nil
+	return false, nil
 }
 
 func (p *Associater) Dissociate(ctx context.Context, pod *corev1.Pod, localIP string, publicIP string) error {
@@ -84,4 +94,20 @@ func initializeAzure() (err error) {
 	config.SetGroup(compute.AzEnvironment, compute.SubscriptionId, compute.ResourceGroupName)
 
 	return nil
+}
+
+func isPublicIPAddressInUseError(err error) bool {
+	/*
+		Sample PublicIPAddressInUse error
+		"err.Error()": "failed to update nic: network.InterfacesClient#CreateOrUpdate: Failure sending request:
+		StatusCode=0 -- Original Error: Code=\"PublicIPAddressInUse\" Message=\"Resource
+		/subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/resourceGroups/MC_rg-aks-cni-standard_aks-cni-standard_eastasia/providers/Microsoft.Network/networkInterfaces/aks-agentpool-93984122-nic-2/ipConfigurations/ipconfig73
+		is referencing public IP address /subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/resourceGroups/MC_rg-aks-cni-standard_aks-cni-standard_eastasia/providers/Microsoft.Network/publicIPAddresses/pip-externelip-003
+		that is already allocated to resource /subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/resourceGroups/MC_rg-aks-cni-standard_aks-cni-standard_eastasia/providers/Microsoft.Network/networkInterfaces/aks-agentpool-93984122-nic-0/ipConfigurations/ipconfig5.\"
+	*/
+	return strings.Contains(err.Error(), "PublicIPAddressInUse")
+}
+
+func isPublicIPReferencedByMultipleIPConfigsError(err error) bool {
+	return strings.Contains(err.Error(), "PublicIPReferencedByMultipleIPConfigs")
 }

@@ -8,7 +8,7 @@ import (
 
 type Associater interface {
 	Initialize(ctx context.Context, localNetworks []string) error
-	Associate(ctx context.Context, pod *corev1.Pod, localIP string, externalIP string) error
+	Associate(ctx context.Context, pod *corev1.Pod, localIP string, externalIP string) (bool, error)
 	Dissociate(ctx context.Context, pod *corev1.Pod, localIP string, externalIP string) error
 }
 

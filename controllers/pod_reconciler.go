@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -62,26 +63,25 @@ func (r *PodAssociater) reconcile(ctx context.Context, pod *corev1.Pod) (ctrl.Re
 
 	podIP := pod.Status.PodIP
 	if pod.ObjectMeta.DeletionTimestamp.IsZero() && podIP != "" {
-		/*
-			if err := r.associateOrUpdate(ctx, pod, externalIP); err != nil {
-				result := ctrl.Result{
-					Requeue:      true,
-					RequeueAfter: time.Second * 10,
-				}
-				return result, err
+		if retry, err := r.associateOrUpdate(ctx, pod, externalIP); retry {
+			result := ctrl.Result{
+				Requeue:      true,
+				RequeueAfter: time.Second * 5,
 			}
-			return ctrl.Result{}, nil
-		*/
-		return ctrl.Result{}, r.associateOrUpdate(ctx, pod, externalIP)
+			r.log.Info("retry associate external IP in 5 seconds", "externalIP", externalIP)
+			return result, nil
+		} else {
+			return ctrl.Result{}, err
+		}
 	} else {
 		return ctrl.Result{}, r.dissociate(ctx, pod, externalIP)
 	}
 }
 
-func (r *PodAssociater) associateOrUpdate(ctx context.Context, pod *corev1.Pod, externalIP string) error {
+func (r *PodAssociater) associateOrUpdate(ctx context.Context, pod *corev1.Pod, externalIP string) (bool, error) {
 	podIP := pod.Status.PodIP
 	if podIP == r.assoMap[namespacedName(pod)] {
-		return nil
+		return false, nil
 	}
 
 	delete(r.assoMap, namespacedName(pod))
@@ -90,14 +90,14 @@ func (r *PodAssociater) associateOrUpdate(ctx context.Context, pod *corev1.Pod, 
 	if podIP != associatedPodIP {
 		removeAssociatedPodIP(pod)
 		if err := (*r.client).Update(ctx, pod); err != nil {
-			return err
+			return false, err
 		}
 	}
 
 	original := pod.DeepCopy()
 	if podIP != parseDissociater(pod) {
 		if err := dissociate(ctx, r.associater, pod, externalIP); err != nil {
-			return err
+			return false, err
 		}
 		r.log.Info("dissociated pod with external IP", "pod.Name", pod.Name, "externalIP", externalIP)
 		addDissociater(pod, podIP)
@@ -105,28 +105,28 @@ func (r *PodAssociater) associateOrUpdate(ctx context.Context, pod *corev1.Pod, 
 
 	if podIP != parseFinalizer(pod) {
 		if err := finalize(ctx, r.finalizer, pod, externalIP); err != nil {
-			return err
+			return false, err
 		}
 		r.log.Info("finalized pod with external IP", "pod.Name", pod.Name, "externalIP", externalIP)
 		addFinalizer(pod, podIP)
 	}
 	if err := (*r.client).Patch(ctx, pod, client.StrategicMergeFrom(original)); err != nil {
-		return err
+		return false, err
 	}
 
-	if err := r.associater.Associate(ctx, pod, podIP, externalIP); err != nil {
-		return err
+	if retry, err := r.associater.Associate(ctx, pod, podIP, externalIP); err != nil || retry {
+		return retry, err
 	}
 
 	original = pod.DeepCopy()
 	setAssociatedPodIP(pod, podIP)
 	if err := (*r.client).Patch(ctx, pod, client.StrategicMergeFrom(original)); err != nil {
-		return err
+		return false, err
 	}
-
 	r.log.Info("associated pod with external IP", "pod.Name", pod.Name, "externalIP", externalIP)
 	r.assoMap[namespacedName(pod)] = podIP
-	return nil
+
+	return false, nil
 }
 
 func (r *PodAssociater) dissociate(ctx context.Context, pod *corev1.Pod, externalIP string) error {
@@ -136,7 +136,7 @@ func (r *PodAssociater) dissociate(ctx context.Context, pod *corev1.Pod, externa
 		return err
 	}
 	if err := (*r.client).Patch(ctx, pod, client.StrategicMergeFrom(original)); err != nil {
-		return err
+		return client.IgnoreNotFound(err)
 	}
 	r.log.Info("dissociated pod with external IP", "pod.Name", pod.Name, "externalIP", externalIP)
 	return nil
@@ -168,7 +168,7 @@ func (r *PodFinalizer) reconcile(ctx context.Context, pod *corev1.Pod) error {
 
 	original := pod.DeepCopy()
 	if err := finalize(ctx, r.provider, pod, externalIP); err != nil {
-		return err
+		return client.IgnoreNotFound(err)
 	}
 	if err := (*r.client).Patch(ctx, pod, client.StrategicMergeFrom(original)); err != nil {
 		return err
